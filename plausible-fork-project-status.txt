@@ -1,0 +1,88 @@
+Project: Privacy-first Plausible Analytics Fork
+Location: C:\Users\ColinDiffer\analytics
+Date: 7 October 2025
+Maintainer: Colin Differ
+
+---
+1. Project Goal
+To create a privacy-first, ICO ‘statistical purposes’ compliant analytics platform based on the open-source Plausible Analytics.
+Goal: 100% traffic coverage without consent banners, using only aggregated and anonymous data.
+
+Main changes:
+- Remove all user-level or identifiable data.
+- Disable ClickHouse ingestion (no raw event storage).
+- Retain aggregate metrics (pageviews, sessions, bounce, avg. duration, revenue totals).
+- Ensure code compiles and runs without ClickHouse dependencies.
+
+---
+2. Deployment Environment
+- Local environment: Windows 11 (PowerShell)
+- Container runtime: Docker Desktop
+- Deployment target: Google Cloud Run (future step)
+- Docker image name: plausible-analytics (and analytics-plausible for compose)
+- Compose file: C:\Users\ColinDiffer\analytics\compose.yml
+
+---
+3. Working Components
+- Postgres (plausible_db) container runs correctly.
+- ClickHouse (plausible_events_db) container starts successfully with listen_host patch (<listen_host>0.0.0.0</listen_host>).
+- Phoenix app container (plausible-1) now builds fully with custom stubbed ingestion module.
+- Build stage completes successfully with exported image analytics-plausible:latest.
+- App starts and logs its warm-up processes via Plausible.Cache.Warmer and related modules.
+
+---
+4. Code Customizations
+Modified core files to disable ClickHouse logic:
+
+lib/plausible/ingestion/write_buffer.ex
+Replaced with a no-op stub returning fake schema data to satisfy compile-time dependencies.
+lib/plausible/event/write_buffer.ex
+Edited to remove destructuring from ClickHouse.
+lib/plausible/session/write_buffer.ex
+Also stubbed.
+
+---
+5. Current State on Startup
+- App builds successfully.
+- Boots without crashing.
+- Shows expected initialization logs for cache warmers and supervisors.
+
+✅ Confirms Phoenix, release runtime, and stubbed ingestion compile and run correctly.
+
+---
+6. Current Issue
+App still attempts to connect to ClickHouse:
+[error] Ch.Connection failed to connect: ** (Mint.TransportError) connection refused
+
+Root cause:
+Plausible.ClickhouseSupervisor and Ch connection processes still active under supervision tree.
+
+To fix: disable these in lib/plausible/application.ex.
+
+---
+7. Next Steps
+1. Patch supervision tree in lib/plausible/application.ex:
+   children =
+     [
+       Plausible.Repo,
+       PlausibleWeb.Endpoint,
+       # Comment out or remove:
+       # Plausible.ClickhouseSupervisor,
+       # Plausible.Ingestion.Supervisor,
+     ]
+
+2. Rebuild and rerun:
+   docker compose build plausible
+   docker compose up
+
+3. Verify no Ch.Connection errors in logs.
+
+---
+8. Next Goals
+- Verify dashboard loads at http://localhost:8080.
+- Confirm metrics aggregate via Postgres.
+- Prepare Cloud Run deployment with proper environment variables.
+- Move to europe-west2 and connect Cloudflare DNS (DNS-only).
+
+---
+End of current status checkpoint.

@@ -1,0 +1,92 @@
+# Production Dockerfile for Google Cloud Run
+FROM hexpm/elixir:1.18.3-erlang-27.3.1-alpine-3.21.3 as buildcontainer
+
+# Install build dependencies
+RUN mkdir /app
+WORKDIR /app
+RUN apk add --no-cache \
+  git \
+  "nodejs-current=23.2.0-r1" \
+  yarn \
+  npm \
+  python3 \
+  ca-certificates \
+  wget \
+  gnupg \
+  make \
+  gcc \
+  libc-dev \
+  brotli
+
+# Copy dependency files
+COPY mix.exs ./
+COPY mix.lock ./
+COPY config ./config
+
+# Set Community Edition environment
+ENV MIX_ENV=ce
+
+# Install Elixir dependencies
+RUN mix local.hex --force && \
+  mix local.rebar --force && \
+  mix deps.get --only ce && \
+  mix deps.compile
+
+# Install Node.js dependencies
+COPY assets/package.json assets/package-lock.json ./assets/
+COPY tracker/package.json tracker/package-lock.json ./tracker/
+RUN npm install --prefix ./assets && \
+  npm install --prefix ./tracker
+
+# Copy application source
+COPY assets ./assets
+COPY tracker ./tracker
+COPY priv ./priv
+COPY lib ./lib
+COPY extra ./extra
+COPY storybook ./storybook
+
+# Build assets and compile release
+RUN npm run deploy --prefix ./tracker && \
+  mix assets.deploy && \
+  mix phx.digest priv/static && \
+  mix download_country_database && \
+  mix compile
+
+# Build release
+WORKDIR /app
+COPY rel rel
+RUN mix release plausible
+
+# Runtime container
+FROM alpine:3.21.3
+
+# Create user and install runtime dependencies
+RUN adduser -S -H -u 999 -G nogroup plausible
+RUN apk upgrade --no-cache
+RUN apk add --no-cache \
+  openssl \
+  ncurses \
+  libstdc++ \
+  libgcc \
+  ca-certificates
+
+# Copy the release
+COPY --from=buildcontainer --chmod=555 /app/_build/ce/rel/plausible /app
+COPY --chmod=755 ./rel/docker-entrypoint.sh /entrypoint.sh
+COPY ./priv/geodb/empty.mmdb /app/priv/geodb/empty.mmdb
+
+# Set proper permissions
+RUN chmod 666 /app/priv/geodb/empty.mmdb && \
+    chown 999:nogroup /app/priv/geodb/empty.mmdb
+RUN mkdir -p /var/lib/plausible && chmod ugo+rw -R /var/lib/plausible
+
+WORKDIR /app
+USER plausible
+EXPOSE 8080
+
+# Use Cloud Run's PORT environment variable
+ENV PORT=8080
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["run"]

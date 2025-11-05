@@ -1,0 +1,8 @@
+-- Add missing user columns that are required for login
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'system';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_used_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_team_identifier TEXT;

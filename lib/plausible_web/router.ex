@@ -10,11 +10,12 @@ defmodule PlausibleWeb.Router do
     plug :fetch_live_flash
     plug :put_secure_browser_headers
     plug PlausibleWeb.Plugs.NoRobots
-    on_ee(do: nil, else: plug(PlausibleWeb.FirstLaunchPlug, redirect_to: "/register"))
-    plug PlausibleWeb.AuthPlug
-    on_ee(do: plug(Plausible.Plugs.HandleExpiredSession))
-    on_ee(do: plug(Plausible.Plugs.SSOTeamAccess))
-    plug PlausibleWeb.Plugs.UserSessionTouch
+    # Authentication disabled for debugging - bypass all auth plugs
+    # on_ee(do: nil, else: plug(PlausibleWeb.FirstLaunchPlug, redirect_to: "/register"))
+    # plug PlausibleWeb.AuthPlug
+    # on_ee(do: plug(Plausible.Plugs.HandleExpiredSession))
+    # on_ee(do: plug(Plausible.Plugs.SSOTeamAccess))
+    # plug PlausibleWeb.Plugs.UserSessionTouch
   end
 
   on_ee do
@@ -448,7 +449,8 @@ defmodule PlausibleWeb.Router do
   end
 
   scope "/settings", PlausibleWeb do
-    pipe_through [:browser, :csrf, PlausibleWeb.RequireAccountPlug]
+    pipe_through [:browser, :csrf]
+    # Removed PlausibleWeb.RequireAccountPlug for debugging
 
     get "/", SettingsController, :index
     get "/preferences", SettingsController, :preferences
@@ -530,7 +532,8 @@ defmodule PlausibleWeb.Router do
     get "/billing/subscription/ping", BillingController, :ping_subscription
 
     scope alias: Live, assigns: %{connect_live_socket: true} do
-      pipe_through [:app_layout, PlausibleWeb.RequireAccountPlug]
+      pipe_through [:app_layout]
+      # Removed PlausibleWeb.RequireAccountPlug for debugging
 
       live "/sites", Sites, :index, as: :site
       live "/team/setup", TeamSetup, :setup, as: :team_setup
@@ -612,7 +615,8 @@ defmodule PlausibleWeb.Router do
     get "/sites/:domain/monthly-report/unsubscribe", UnsubscribeController, :monthly_report
 
     scope alias: Live, assigns: %{connect_live_socket: true} do
-      pipe_through [:app_layout, PlausibleWeb.RequireAccountPlug]
+      pipe_through [:app_layout]
+      # Removed PlausibleWeb.RequireAccountPlug for debugging
 
       scope assigns: %{
               dogfood_page_path: "/:website/installation"
