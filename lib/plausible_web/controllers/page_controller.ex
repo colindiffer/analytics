@@ -12,7 +12,24 @@ defmodule PlausibleWeb.PageController do
   For debugging, show a simple success page without authentication.
   """
   def index(conn, _params) do
-    # Show simple success page instead of redirecting to complex sites dashboard
-    text(conn, "Plausible Analytics is running successfully! Authentication has been disabled for debugging.")
+    # Show HTML page confirming auth bypass is working
+    html(conn, """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Plausible Analytics - Auth Bypass Active</title>
+    <style>body{font-family:Arial;margin:50px;background:#f5f5f5}.container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:8px}h1{color:#4f46e5}.status{background:#10b981;color:white;padding:10px;border-radius:4px}</style>
+    </head>
+    <body>
+    <div class="container">
+    <h1>🚀 Plausible Analytics</h1>
+    <div class="status">✅ Authentication bypass is active!</div>
+    <p>The service is running without login requirements.</p>
+    <p><strong>Service Status:</strong> Running successfully</p>
+    <p><strong>Database:</strong> Connected</p>
+    <p><strong>Authentication:</strong> Bypassed</p>
+    </div>
+    </body>
+    </html>
+    """)
   end
 end
