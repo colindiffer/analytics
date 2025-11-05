@@ -11,7 +11,6 @@ defmodule PlausibleWeb.Router do
     plug :put_secure_browser_headers
     plug PlausibleWeb.Plugs.NoRobots
     # Authentication disabled for debugging - bypass all auth plugs
-    # on_ee(do: nil, else: plug(PlausibleWeb.FirstLaunchPlug, redirect_to: "/register"))
     # plug PlausibleWeb.AuthPlug
     # on_ee(do: plug(Plausible.Plugs.HandleExpiredSession))
     # on_ee(do: plug(Plausible.Plugs.SSOTeamAccess))
@@ -25,10 +24,10 @@ defmodule PlausibleWeb.Router do
       plug :fetch_live_flash
       plug :put_secure_browser_headers
       plug PlausibleWeb.Plugs.NoRobots
-      on_ee(do: nil, else: plug(PlausibleWeb.FirstLaunchPlug, redirect_to: "/register"))
-      plug PlausibleWeb.AuthPlug
-      on_ee(do: plug(Plausible.Plugs.HandleExpiredSession))
-      plug PlausibleWeb.Plugs.UserSessionTouch
+      # Authentication disabled for debugging - bypass all auth plugs
+      # plug PlausibleWeb.AuthPlug
+      # on_ee(do: plug(Plausible.Plugs.HandleExpiredSession))
+      # plug PlausibleWeb.Plugs.UserSessionTouch
     end
   end
 

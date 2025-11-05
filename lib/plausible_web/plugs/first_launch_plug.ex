@@ -27,12 +27,13 @@ defmodule PlausibleWeb.FirstLaunchPlug do
   def call(%Plug.Conn{request_path: path} = conn, path), do: conn
 
   def call(conn, redirect_to) do
-    if Release.should_be_first_launch?() do
+    # Authentication bypass for debugging - never redirect to registration
+    # if Release.should_be_first_launch?() do
+    #   conn
+    #   |> Phoenix.Controller.redirect(to: redirect_to)
+    #   |> Plug.Conn.halt()
+    # else
       conn
-      |> Phoenix.Controller.redirect(to: redirect_to)
-      |> Plug.Conn.halt()
-    else
-      conn
-    end
+    # end
   end
 end
