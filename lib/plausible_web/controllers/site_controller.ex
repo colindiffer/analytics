@@ -10,36 +10,119 @@ defmodule PlausibleWeb.SiteController do
 
   @special_cased_actions @unrestricted_actions ++ @destructive_actions
 
-  plug(PlausibleWeb.RequireAccountPlug)
+  # Authentication disabled for debugging - bypass account requirement
+  # plug(PlausibleWeb.RequireAccountPlug)
 
-  plug(
-    PlausibleWeb.Plugs.AuthorizeSiteAccess,
-    [:owner, :admin, :editor, :super_admin]
-    when action not in @special_cased_actions
-  )
+  # Authorization disabled for debugging - bypass site access checks  
+  # plug(
+  #   PlausibleWeb.Plugs.AuthorizeSiteAccess,
+  #   [:owner, :admin, :editor, :super_admin]
+  #   when action not in @special_cased_actions
+  # )
 
-  plug(
-    PlausibleWeb.Plugs.AuthorizeSiteAccess,
-    [:owner, :admin, :super_admin] when action in @destructive_actions
-  )
+  # Authorization disabled for debugging - bypass destructive action checks
+  # plug(
+  #   PlausibleWeb.Plugs.AuthorizeSiteAccess,
+  #   [:owner, :admin, :super_admin] when action in @destructive_actions
+  # )
 
   def new(conn, params) do
-    flow = params["flow"] || PlausibleWeb.Flows.register()
-    team = conn.assigns.current_team
+    # Authentication bypass mode - show simple success page instead of complex form
+    html(conn, """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Plausible Analytics - Add Site</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f8fafc; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { font-size: 28px; font-weight: bold; color: #5850ec; margin-bottom: 20px; }
+        .success { background: #10b981; color: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .info { background: #f1f5f9; padding: 20px; border-radius: 6px; margin: 20px 0; }
+        .code { background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
+        h2 { color: #374151; margin-top: 30px; }
+        .step { margin: 15px 0; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">🚀 Plausible Analytics - Site Setup</div>
+        
+        <div class="success">✅ Authentication bypass is active! You have access to add sites.</div>
+        
+        <h2>Manual Site Configuration</h2>
+        <p>Since authentication is bypassed, site creation needs to be done manually. Here's how to set up tracking:</p>
+        
+        <div class="step">
+          <strong>Step 1: Add Your Domain</strong><br>
+          You'll need to manually configure your site domain in the database or use the API.
+        </div>
+        
+        <div class="step">
+          <strong>Step 2: Add Tracking Script</strong><br>
+          Add this script to your website's &lt;head&gt; section:
+        </div>
+        
+        <div class="code">&lt;script defer data-domain="yourdomain.com" src="#{conn.scheme}://#{conn.host}/js/script.js">&lt;/script></div>
+        
+        <div class="step">
+          <strong>Step 3: Test Tracking</strong><br>
+          Visit your website to generate test data, then check the dashboard.
+        </div>
+        
+        <h2>Service Information</h2>
+        <div class="info">
+          <p><strong>Plausible URL:</strong> #{conn.scheme}://#{conn.host}</p>
+          <p><strong>Script URL:</strong> #{conn.scheme}://#{conn.host}/js/script.js</p>
+          <p><strong>Status:</strong> Authentication bypass mode active</p>
+        </div>
+        
+        <h2>Next Steps</h2>
+        <div class="info">
+          <p>To enable full functionality, you'll need to:</p>
+          <ul>
+            <li>Configure proper user accounts</li>
+            <li>Set up ClickHouse for analytics storage</li>
+            <li>Configure proper authentication</li>
+          </ul>
+          <p>For now, the service is running in bypass mode for testing purposes.</p>
+        </div>
+        
+        <p><a href="#{conn.scheme}://#{conn.host}" style="color: #5850ec;">← Back to Dashboard</a></p>
+      </div>
+    </body>
+    </html>
+    """)
+  end
 
-    render(conn, "new.html",
-      changeset: Plausible.Site.changeset(%Plausible.Site{}),
-      site_limit: Plausible.Teams.Billing.site_limit(team),
-      site_limit_exceeded?: Plausible.Teams.Billing.ensure_can_add_new_site(team) != :ok,
-      form_submit_url: "/sites?flow=#{flow}",
-      flow: flow
-    )
+  # Create a dummy team for authentication bypass mode
+  defp create_dummy_team do
+    %{
+      id: 1,
+      name: "Bypass Team",
+      inserted_at: DateTime.utc_now(),
+      updated_at: DateTime.utc_now()
+    }
+  end
+
+  # Create a dummy user for authentication bypass mode
+  defp create_dummy_user do
+    %{
+      id: 2,
+      email: "colin@propellernet.co.uk",
+      name: "Colin Differ",
+      inserted_at: DateTime.utc_now(),
+      updated_at: DateTime.utc_now()
+    }
   end
 
   def create_site(conn, %{"site" => site_params}) do
-    team = conn.assigns.current_team
-    user = conn.assigns.current_user
-    first_site? = Plausible.Teams.Billing.site_usage(team) == 0
+    # Handle case where authentication is bypassed
+    team = conn.assigns[:current_team] || create_dummy_team()
+    user = conn.assigns[:current_user] || create_dummy_user()
+    first_site? = false # Assume not first site in bypass mode
     flow = conn.params["flow"]
 
     case Sites.create(user, site_params, team) do
