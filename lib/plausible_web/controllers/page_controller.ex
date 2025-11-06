@@ -17,6 +17,41 @@ defmodule PlausibleWeb.PageController do
     sites = from(s in Plausible.Site, select: %{domain: s.domain, inserted_at: s.inserted_at}) 
             |> Repo.all()
     
+    sites_html = if Enum.empty?(sites) do
+      """
+      <div class="site-card" style="text-align: center; color: #6b7280;">
+        <div class="site-name">No sites yet</div>
+        <div class="site-url">Add your first site to start tracking analytics</div>
+      </div>
+      """
+    else
+      sites
+      |> Enum.map(fn site ->
+        date_str = Calendar.strftime(site.inserted_at, "%B %d, %Y")
+        """
+        <div class="site-card">
+          <div class="site-name">#{site.domain}</div>
+          <div class="site-url">Added #{date_str}</div>
+          <div class="site-stats">
+            <div class="stat">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Visitors</div>
+            </div>
+            <div class="stat">
+              <div class="stat-number">0</div>
+              <div class="stat-label">Page views</div>
+            </div>
+            <div class="stat">
+              <div class="stat-number">-%</div>
+              <div class="stat-label">Bounce rate</div>
+            </div>
+          </div>
+        </div>
+        """
+      end)
+      |> Enum.join("\n")
+    end
+    
     # Show a working dashboard with real sites from database
     html(conn, """
     <!DOCTYPE html>
@@ -64,33 +99,7 @@ defmodule PlausibleWeb.PageController do
         <h2 style="margin-bottom: 16px;">Your Sites</h2>
         
         <div class="sites-grid">
-          #{if Enum.empty?(sites) do}
-            <div class="site-card" style="text-align: center; color: #6b7280;">
-              <div class="site-name">No sites yet</div>
-              <div class="site-url">Add your first site to start tracking analytics</div>
-            </div>
-          #{else}
-            #{for site <- sites do}
-              <div class="site-card">
-                <div class="site-name">#{site.domain}</div>
-                <div class="site-url">Added #{Calendar.strftime(site.inserted_at, "%B %d, %Y")}</div>
-                <div class="site-stats">
-                  <div class="stat">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Visitors</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Page views</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-number">-%</div>
-                    <div class="stat-label">Bounce rate</div>
-                  </div>
-                </div>
-              </div>
-            #{end}
-          #{end}
+          #{sites_html}
           
           <div class="add-site">
             <h3 style="margin-bottom: 8px;">Add New Site</h3>
