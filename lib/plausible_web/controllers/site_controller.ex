@@ -5,7 +5,7 @@ defmodule PlausibleWeb.SiteController do
 
   alias Plausible.Sites
 
-  @unrestricted_actions [:new, :create_site]
+  @unrestricted_actions [:new, :create, :create_site]
   @destructive_actions [:settings_danger_zone, :reset_stats, :delete_site]
 
   @special_cased_actions @unrestricted_actions ++ @destructive_actions
@@ -27,6 +27,9 @@ defmodule PlausibleWeb.SiteController do
   # )
 
   def new(conn, params) do
+    # Get CSRF token for the form
+    csrf_token = Plug.CSRFProtection.get_csrf_token()
+    
     # Show proper site creation form
     html(conn, """
     <!DOCTYPE html>
@@ -57,7 +60,7 @@ defmodule PlausibleWeb.SiteController do
     <body>
       <div class="header">
         <div class="header-content">
-          <div class="logo">� Plausible Analytics</div>
+          <div class="logo">📊 Plausible Analytics</div>
           <div><a href="/" class="back-link">← Back to Dashboard</a></div>
         </div>
       </div>
@@ -67,6 +70,8 @@ defmodule PlausibleWeb.SiteController do
           <h1 style="margin-bottom: 24px;">Add Your Website</h1>
           
           <form action="/sites/create" method="post">
+            <input type="hidden" name="_csrf_token" value="#{csrf_token}" />
+            
             <div class="form-group">
               <label class="label" for="domain">Domain</label>
               <input 

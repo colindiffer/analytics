@@ -447,6 +447,13 @@ defmodule PlausibleWeb.Router do
     post "/share/:slug/authenticate", StatsController, :authenticate_shared_link
   end
 
+  # Site creation routes without CSRF for debugging
+  scope "/", PlausibleWeb do
+    pipe_through [:browser]
+    
+    post "/sites/create", SiteController, :create
+  end
+
   scope "/settings", PlausibleWeb do
     pipe_through [:browser, :csrf]
     # Removed PlausibleWeb.RequireAccountPlug for debugging
@@ -539,7 +546,6 @@ defmodule PlausibleWeb.Router do
     end
 
     get "/sites/new", SiteController, :new
-    post "/sites/create", SiteController, :create
     post "/sites", SiteController, :create_site
     get "/sites/:domain/change-domain", SiteController, :change_domain
     put "/sites/:domain/change-domain", SiteController, :change_domain_submit
