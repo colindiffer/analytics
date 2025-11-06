@@ -120,6 +120,7 @@ defmodule PlausibleWeb.SiteController do
     case Repo.insert(%Plausible.Site{
       domain: domain,
       timezone: timezone,
+      legacy_time_on_page_cutoff: nil,
       inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
       updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     }) do
