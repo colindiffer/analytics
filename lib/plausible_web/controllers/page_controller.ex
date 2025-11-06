@@ -29,24 +29,26 @@ defmodule PlausibleWeb.PageController do
       |> Enum.map(fn site ->
         date_str = Calendar.strftime(site.inserted_at, "%B %d, %Y")
         """
-        <div class="site-card">
-          <div class="site-name">#{site.domain}</div>
-          <div class="site-url">Added #{date_str}</div>
-          <div class="site-stats">
-            <div class="stat">
-              <div class="stat-number">0</div>
-              <div class="stat-label">Visitors</div>
-            </div>
-            <div class="stat">
-              <div class="stat-number">0</div>
-              <div class="stat-label">Page views</div>
-            </div>
-            <div class="stat">
-              <div class="stat-number">-%</div>
-              <div class="stat-label">Bounce rate</div>
+        <a href="/#{site.domain}" style="text-decoration: none; color: inherit; display: block;">
+          <div class="site-card" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="site-name">#{site.domain}</div>
+            <div class="site-url">Added #{date_str}</div>
+            <div class="site-stats">
+              <div class="stat">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Visitors</div>
+              </div>
+              <div class="stat">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Page views</div>
+              </div>
+              <div class="stat">
+                <div class="stat-number">-%</div>
+                <div class="stat-label">Bounce rate</div>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
         """
       end)
       |> Enum.join("\n")

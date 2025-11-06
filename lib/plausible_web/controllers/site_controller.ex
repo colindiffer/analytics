@@ -125,10 +125,28 @@ defmodule PlausibleWeb.SiteController do
       updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     }) do
       {:ok, site} ->
-        # Redirect to dashboard with success
+        # Enable ALL tracking features for this site
+        PlausibleWeb.Tracker.update_script_configuration!(
+          site,
+          %{
+            site_id: site.id,
+            installation_type: :gtm,
+            track_404_pages: true,
+            hash_based_routing: true,
+            outbound_links: true,
+            file_downloads: true,
+            revenue_tracking: true,
+            tagged_events: true,
+            form_submissions: true,
+            pageview_props: true
+          },
+          :installation
+        )
+        
+        # Redirect to the dashboard for this site
         conn
-        |> put_flash(:success, "Site #{domain} added successfully!")
-        |> redirect(to: "/")
+        |> put_flash(:success, "Site #{domain} added successfully with all tracking features enabled!")
+        |> redirect(to: "/#{domain}")
       {:error, changeset} ->
         # Handle error - domain might already exist
         conn
