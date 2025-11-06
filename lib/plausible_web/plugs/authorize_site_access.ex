@@ -77,6 +77,9 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
 
   def call(conn, {allowed_roles, site_param}) do
     current_user = conn.assigns[:current_user]
+    
+    # BYPASS AUTH: Check if in bypass mode
+    bypass_auth = System.get_env("BYPASS_AUTH") == "true"
 
     with {:ok, domain} <- get_domain(conn, site_param),
          {:ok, %{site: site, role: membership_role, member_type: member_type}} <-
@@ -84,6 +87,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
          {:ok, shared_link} <- maybe_get_shared_link(conn, site) do
       role =
         cond do
+          # BYPASS AUTH: Treat as super_admin when bypassing
+          bypass_auth && is_nil(current_user) ->
+            :super_admin
+            
           membership_role ->
             membership_role
 
