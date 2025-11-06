@@ -99,9 +99,13 @@ defmodule Plausible.Imported do
 
   @spec list_all_imports(Site.t(), atom()) :: [SiteImport.t()]
   def list_all_imports(site, status \\ nil) do
-    from(i in SiteImport, where: i.site_id == ^site.id, order_by: [desc: i.inserted_at])
-    |> maybe_filter_by_status(status)
-    |> Repo.all()
+    try do
+      from(i in SiteImport, where: i.site_id == ^site.id, order_by: [desc: i.inserted_at])
+      |> maybe_filter_by_status(status)
+      |> Repo.all()
+    rescue
+      Postgrex.Error -> []
+    end
   end
 
   @spec other_imports_in_progress?(SiteImport.t()) :: boolean()
@@ -205,8 +209,12 @@ defmodule Plausible.Imported do
   end
 
   defp get_completed_imports(site) do
-    site
-    |> Repo.preload(:completed_imports)
-    |> Map.fetch!(:completed_imports)
+    try do
+      site
+      |> Repo.preload(:completed_imports)
+      |> Map.fetch!(:completed_imports)
+    rescue
+      Postgrex.Error -> []
+    end
   end
 end

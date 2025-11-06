@@ -25,11 +25,15 @@ defmodule PlausibleWeb.Live.ImportsExportsSettings do
         )
       end)
       |> assign_new(:site_imports, fn %{site: site} ->
-        site
-        |> Imported.list_all_imports()
-        |> Enum.map(
-          &%{site_import: &1, live_status: &1.status, tooltip: notice_label(&1, &1.status)}
-        )
+        try do
+          site
+          |> Imported.list_all_imports()
+          |> Enum.map(
+            &%{site_import: &1, live_status: &1.status, tooltip: notice_label(&1, &1.status)}
+          )
+        rescue
+          Postgrex.Error -> []
+        end
       end)
       |> assign_new(:pageview_counts, fn %{site: site} ->
         Plausible.Stats.Clickhouse.imported_pageview_counts(site)

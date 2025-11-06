@@ -1,0 +1,87 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/client-name: gcloud
+    run.googleapis.com/client-version: 520.0.0
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/operation-id: 55fc9617-0e6d-4545-8b9c-0499986220bc
+    run.googleapis.com/urls: '["https://plausible-924608013587.us-central1.run.app","https://plausible-ohnfrayw6q-uc.a.run.app"]'
+    serving.knative.dev/creator: google@propellernet.co.uk
+    serving.knative.dev/lastModifier: google@propellernet.co.uk
+  creationTimestamp: '2025-10-07T11:29:56.030664Z'
+  generation: 62
+  labels:
+    cloud.googleapis.com/location: us-central1
+  name: plausible
+  namespace: '924608013587'
+  resourceVersion: AAZC7eGKnvE
+  selfLink: /apis/serving.knative.dev/v1/namespaces/924608013587/services/plausible
+  uid: af50c4e0-f4d4-4229-973c-3efc67387bce
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '1'
+        autoscaling.knative.dev/minScale: '1'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 520.0.0
+        run.googleapis.com/cloudsql-instances: ''
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        client.knative.dev/nonce: okctmxoinu
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: DATABASE_URL
+          value: postgresql://postgres:SecurePlausiblePassword2025!@34.142.91.101/plausible
+        - name: SECRET_KEY_BASE
+          value: SuperSecretKeyBaseForPlausibleThatIsVeryLongAndSecure2025Analytics
+        - name: BASE_URL
+          value: https://analytics.propellernet.co.uk
+        - name: TOTP_VAULT_KEY
+          value: DSHGn/hOD0VSg0CMvzZaFAUEnFBl1UiJAXcI7XikRtg=
+        - name: BYPASS_AUTH
+          value: 'true'
+        image: us-central1-docker.pkg.dev/propellernet-analytics/plausible-repo/plausible:fix-duplicates
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: 924608013587-compute@developer.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - percent: 100
+    revisionName: plausible-00050-d5g
+status:
+  address:
+    url: https://plausible-ohnfrayw6q-uc.a.run.app
+  conditions:
+  - lastTransitionTime: '2025-11-06T14:28:38.904561Z'
+    status: 'True'
+    type: Ready
+  - lastTransitionTime: '2025-11-06T14:28:37.677028Z'
+    status: 'True'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2025-11-06T14:28:38.861580Z'
+    status: 'True'
+    type: RoutesReady
+  latestCreatedRevisionName: plausible-00050-d5g
+  latestReadyRevisionName: plausible-00050-d5g
+  observedGeneration: 62
+  traffic:
+  - percent: 100
+    revisionName: plausible-00050-d5g
+  url: https://plausible-ohnfrayw6q-uc.a.run.app

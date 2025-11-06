@@ -74,7 +74,9 @@ RUN apk add --no-cache \
 # Copy the release
 COPY --from=buildcontainer --chmod=555 /app/_build/ce/rel/plausible /app
 COPY --chmod=755 ./rel/docker-entrypoint.sh /entrypoint.sh
-COPY ./priv/geodb/empty.mmdb /app/priv/geodb/empty.mmdb
+
+# Create geodb directory and empty file if it doesn't exist
+RUN mkdir -p /app/priv/geodb && touch /app/priv/geodb/empty.mmdb
 
 # Set proper permissions
 RUN chmod 666 /app/priv/geodb/empty.mmdb && \
@@ -83,10 +85,9 @@ RUN mkdir -p /var/lib/plausible && chmod ugo+rw -R /var/lib/plausible
 
 WORKDIR /app
 USER plausible
-EXPOSE 8080
 
-# Use Cloud Run's PORT environment variable
-ENV PORT=8080
+# Don't EXPOSE a specific port - let Cloud Run handle it via PORT env var
+# EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["run"]
