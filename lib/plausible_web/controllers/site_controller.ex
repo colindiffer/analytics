@@ -116,12 +116,12 @@ defmodule PlausibleWeb.SiteController do
     domain = String.trim(site_params["domain"])
     timezone = site_params["timezone"] || "Etc/UTC"
     
-    # Create a basic site entry
+    # Create a basic site entry using NaiveDateTime for timestamps
     case Repo.insert(%Plausible.Site{
       domain: domain,
       timezone: timezone,
-      inserted_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
+      inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+      updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     }) do
       {:ok, site} ->
         # Redirect to dashboard with success
