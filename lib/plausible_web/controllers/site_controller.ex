@@ -27,74 +27,108 @@ defmodule PlausibleWeb.SiteController do
   # )
 
   def new(conn, params) do
-    # Authentication bypass mode - show simple success page instead of complex form
+    # Show proper site creation form
     html(conn, """
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Plausible Analytics - Add Site</title>
+      <title>Add New Site - Plausible Analytics</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f8fafc; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { font-size: 28px; font-weight: bold; color: #5850ec; margin-bottom: 20px; }
-        .success { background: #10b981; color: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        .info { background: #f1f5f9; padding: 20px; border-radius: 6px; margin: 20px 0; }
-        .code { background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
-        h2 { color: #374151; margin-top: 30px; }
-        .step { margin: 15px 0; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #374151; }
+        .header { background: white; border-bottom: 1px solid #e5e7eb; padding: 16px 24px; }
+        .header-content { max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: bold; color: #5850ec; }
+        .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+        .card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        .label { display: block; font-weight: 500; margin-bottom: 8px; color: #374151; }
+        .input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; }
+        .input:focus { outline: none; border-color: #5850ec; }
+        .btn { background: #5850ec; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; }
+        .btn:hover { background: #4338ca; }
+        .help-text { color: #6b7280; font-size: 14px; margin-top: 4px; }
+        .back-link { color: #5850ec; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
       </style>
     </head>
     <body>
+      <div class="header">
+        <div class="header-content">
+          <div class="logo">� Plausible Analytics</div>
+          <div><a href="/" class="back-link">← Back to Dashboard</a></div>
+        </div>
+      </div>
+      
       <div class="container">
-        <div class="header">🚀 Plausible Analytics - Site Setup</div>
-        
-        <div class="success">✅ Authentication bypass is active! You have access to add sites.</div>
-        
-        <h2>Manual Site Configuration</h2>
-        <p>Since authentication is bypassed, site creation needs to be done manually. Here's how to set up tracking:</p>
-        
-        <div class="step">
-          <strong>Step 1: Add Your Domain</strong><br>
-          You'll need to manually configure your site domain in the database or use the API.
+        <div class="card">
+          <h1 style="margin-bottom: 24px;">Add Your Website</h1>
+          
+          <form action="/sites/create" method="post">
+            <div class="form-group">
+              <label class="label" for="domain">Domain</label>
+              <input 
+                type="text" 
+                name="site[domain]" 
+                id="domain" 
+                class="input"
+                placeholder="example.com"
+                required
+              />
+              <div class="help-text">
+                Just the domain name, no https:// or www. For example: example.com
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="label" for="timezone">Timezone</label>
+              <select name="site[timezone]" id="timezone" class="input">
+                <option value="Etc/UTC">UTC</option>
+                <option value="Europe/London">London</option>
+                <option value="America/New_York">New York</option>
+                <option value="America/Los_Angeles">Los Angeles</option>
+                <option value="Europe/Paris">Paris</option>
+                <option value="Europe/Berlin">Berlin</option>
+              </select>
+              <div class="help-text">
+                Used for displaying stats in your local time.
+              </div>
+            </div>
+            
+            <button type="submit" class="btn">Add Site</button>
+          </form>
         </div>
-        
-        <div class="step">
-          <strong>Step 2: Add Tracking Script</strong><br>
-          Add this script to your website's &lt;head&gt; section:
-        </div>
-        
-        <div class="code">&lt;script defer data-domain="yourdomain.com" src="#{conn.scheme}://#{conn.host}/js/script.js">&lt;/script></div>
-        
-        <div class="step">
-          <strong>Step 3: Test Tracking</strong><br>
-          Visit your website to generate test data, then check the dashboard.
-        </div>
-        
-        <h2>Service Information</h2>
-        <div class="info">
-          <p><strong>Plausible URL:</strong> #{conn.scheme}://#{conn.host}</p>
-          <p><strong>Script URL:</strong> #{conn.scheme}://#{conn.host}/js/script.js</p>
-          <p><strong>Status:</strong> Authentication bypass mode active</p>
-        </div>
-        
-        <h2>Next Steps</h2>
-        <div class="info">
-          <p>To enable full functionality, you'll need to:</p>
-          <ul>
-            <li>Configure proper user accounts</li>
-            <li>Set up ClickHouse for analytics storage</li>
-            <li>Configure proper authentication</li>
-          </ul>
-          <p>For now, the service is running in bypass mode for testing purposes.</p>
-        </div>
-        
-        <p><a href="#{conn.scheme}://#{conn.host}" style="color: #5850ec;">← Back to Dashboard</a></p>
       </div>
     </body>
     </html>
     """)
+  end
+  
+  def create(conn, %{"site" => site_params}) do
+    # Create the site in the database
+    domain = String.trim(site_params["domain"])
+    timezone = site_params["timezone"] || "Etc/UTC"
+    
+    # Create a basic site entry
+    case Repo.insert(%Plausible.Site{
+      domain: domain,
+      timezone: timezone,
+      inserted_at: DateTime.utc_now(),
+      updated_at: DateTime.utc_now()
+    }) do
+      {:ok, site} ->
+        # Redirect to dashboard with success
+        conn
+        |> put_flash(:success, "Site #{domain} added successfully!")
+        |> redirect(to: "/")
+      {:error, changeset} ->
+        # Handle error - domain might already exist
+        conn
+        |> put_flash(:error, "Failed to add site. Domain might already exist.")
+        |> redirect(to: "/sites/new")
+    end
   end
 
   # Create a dummy team for authentication bypass mode

@@ -539,6 +539,7 @@ defmodule PlausibleWeb.Router do
     end
 
     get "/sites/new", SiteController, :new
+    post "/sites/create", SiteController, :create
     post "/sites", SiteController, :create_site
     get "/sites/:domain/change-domain", SiteController, :change_domain
     put "/sites/:domain/change-domain", SiteController, :change_domain_submit
