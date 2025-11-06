@@ -180,7 +180,10 @@ defmodule PlausibleWeb.Plugs.AuthorizeSiteAccess do
   end
 
   defp get_site_with_role(conn, current_user, domain) do
-    site = Repo.get_by(Plausible.Site, domain: domain)
+    # BYPASS AUTH: Handle duplicates by taking the first (oldest) site
+    site = 
+      from(s in Plausible.Site, where: s.domain == ^domain, order_by: [asc: s.id], limit: 1)
+      |> Repo.one()
 
     if site do
       {member_type, site_role} =
