@@ -10,14 +10,20 @@ defmodule Plausible.Stats.Clickhouse do
 
   @spec pageview_start_date_local(Plausible.Site.t()) :: Date.t() | nil
   def pageview_start_date_local(site) do
-    datetime =
-      ClickhouseRepo.one(
-        from(e in "events_v2",
-          select: fragment("min(?)", e.timestamp),
-          where: e.site_id == ^site.id,
-          where: e.timestamp >= ^site.native_stats_start_at
-        )
+    query =
+      from(e in "events_v2",
+        select: fragment("min(?)", e.timestamp),
+        where: e.site_id == ^site.id
       )
+
+    query =
+      if site.native_stats_start_at do
+        from(e in query, where: e.timestamp >= ^site.native_stats_start_at)
+      else
+        query
+      end
+
+    datetime = ClickhouseRepo.one(query)
 
     case datetime do
       # no stats for this domain yet
