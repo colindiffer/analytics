@@ -4,6 +4,7 @@ defmodule Plausible.Ingestion.WriteBuffer do
   require Logger
 
   alias Plausible.IngestRepo
+  @default_retry_interval_ms 1_000
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: Keyword.fetch!(opts, :name))
@@ -22,6 +23,7 @@ defmodule Plausible.Ingestion.WriteBuffer do
     buffer = opts[:buffer] || []
     max_buffer_size = opts[:max_buffer_size] || default_max_buffer_size()
     flush_interval_ms = opts[:flush_interval_ms] || default_flush_interval_ms()
+    retry_interval_ms = opts[:retry_interval_ms] || default_retry_interval_ms()
 
     Process.flag(:trap_exit, true)
     timer = Process.send_after(self(), :tick, flush_interval_ms)
@@ -36,7 +38,8 @@ defmodule Plausible.Ingestion.WriteBuffer do
        header: Keyword.fetch!(opts, :header),
        buffer_size: IO.iodata_length(buffer),
        max_buffer_size: max_buffer_size,
-       flush_interval_ms: flush_interval_ms
+       flush_interval_ms: flush_interval_ms,
+       retry_interval_ms: retry_interval_ms
      }}
   end
 
@@ -44,16 +47,14 @@ defmodule Plausible.Ingestion.WriteBuffer do
   def handle_cast({:insert, row_binary}, state) do
     state = %{
       state
-      | buffer: [state.buffer | row_binary],
+      | buffer: [row_binary | state.buffer],
         buffer_size: state.buffer_size + IO.iodata_length(row_binary)
     }
 
     if state.buffer_size >= state.max_buffer_size do
       Logger.notice("#{state.name} buffer full, flushing to ClickHouse")
       Process.cancel_timer(state.timer)
-      do_flush(state)
-      new_timer = Process.send_after(self(), :tick, state.flush_interval_ms)
-      {:noreply, %{state | buffer: [], timer: new_timer, buffer_size: 0}}
+      flush_and_reschedule(state, fn new_state -> {:noreply, new_state} end)
     else
       {:noreply, state}
     end
@@ -61,44 +62,89 @@ defmodule Plausible.Ingestion.WriteBuffer do
 
   @impl true
   def handle_info(:tick, state) do
-    do_flush(state)
-    timer = Process.send_after(self(), :tick, state.flush_interval_ms)
-    {:noreply, %{state | buffer: [], buffer_size: 0, timer: timer}}
+    flush_and_reschedule(state, fn new_state -> {:noreply, new_state} end)
+  end
+
+  @impl true
+  def handle_info(:retry_flush, state) do
+    flush_and_reschedule(state, fn new_state -> {:noreply, new_state} end)
   end
 
   @impl true
   def handle_call(:flush, _from, state) do
-    %{timer: timer, flush_interval_ms: flush_interval_ms} = state
+    %{timer: timer} = state
     Process.cancel_timer(timer)
-    do_flush(state)
-    new_timer = Process.send_after(self(), :tick, flush_interval_ms)
-    {:reply, :ok, %{state | buffer: [], buffer_size: 0, timer: new_timer}}
+    flush_and_reschedule(state, fn new_state -> {:reply, :ok, new_state} end, fn new_state, reason ->
+      {:reply, {:error, reason}, new_state}
+    end)
   end
 
   @impl true
   def terminate(_reason, %{name: name} = state) do
     Logger.notice("Flushing #{name} buffer before shutdown...")
-    do_flush(state)
+    case attempt_flush(state) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason, _errored_state} ->
+        Logger.error("Failed to flush #{name} buffer during shutdown:\n#{reason}")
+    end
   end
 
-  defp do_flush(state) do
-    %{
-      buffer: buffer,
-      buffer_size: buffer_size,
-      insert_opts: insert_opts,
-      insert_sql: insert_sql,
-      header: header,
-      name: name
-    } = state
+  defp flush_and_reschedule(state, on_success, on_error \\ fn new_state, _reason ->
+    {:noreply, new_state}
+  end) do
+    case attempt_flush(state) do
+      {:ok, flushed_state} ->
+        new_timer = schedule_tick(flushed_state)
+        on_success.(%{flushed_state | timer: new_timer})
 
-    case buffer do
-      [] ->
-        nil
-
-      _not_empty ->
-        Logger.notice("Flushing #{buffer_size} byte(s) RowBinary from #{name}")
-        IngestRepo.query!(insert_sql, [header | buffer], insert_opts)
+      {:error, reason, errored_state} ->
+        log_flush_failure(errored_state, reason)
+        new_timer = schedule_retry(errored_state)
+        on_error.(%{errored_state | timer: new_timer}, reason)
     end
+  end
+
+  defp attempt_flush(%{buffer: []} = state), do: {:ok, state}
+
+  defp attempt_flush(%{buffer: buffer, buffer_size: buffer_size, name: name} = state) do
+    Logger.notice("Flushing #{buffer_size} byte(s) RowBinary from #{name}")
+
+    flush_buffer = Enum.reverse(buffer)
+    payload = [state.header | flush_buffer]
+
+    case safe_query(state.insert_sql, payload, state.insert_opts) do
+      :ok ->
+        {:ok, %{state | buffer: [], buffer_size: 0}}
+
+      {:error, reason} ->
+        {:error, reason, state}
+    end
+  end
+
+  defp safe_query(sql, payload, opts) do
+    try do
+      IngestRepo.query!(sql, payload, opts)
+      :ok
+    catch
+      kind, reason ->
+        {:error, Exception.format(kind, reason, __STACKTRACE__)}
+    end
+  end
+
+  defp log_flush_failure(state, reason) do
+    Logger.error(
+      "Failed to flush #{state.name} buffer (#{state.buffer_size} byte(s)); retrying in #{state.retry_interval_ms}ms\n#{reason}"
+    )
+  end
+
+  defp schedule_tick(%{flush_interval_ms: flush_interval_ms}) do
+    Process.send_after(self(), :tick, flush_interval_ms)
+  end
+
+  defp schedule_retry(%{retry_interval_ms: retry_interval_ms}) do
+    Process.send_after(self(), :retry_flush, retry_interval_ms)
   end
 
   defp default_flush_interval_ms do
@@ -108,6 +154,8 @@ defmodule Plausible.Ingestion.WriteBuffer do
   defp default_max_buffer_size do
     Keyword.fetch!(Application.get_env(:plausible, IngestRepo), :max_buffer_size)
   end
+
+  defp default_retry_interval_ms, do: @default_retry_interval_ms
 
   @doc false
   def compile_time_prepare(schema) do
