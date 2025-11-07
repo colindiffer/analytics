@@ -1,0 +1,53 @@
+Project: Propellernet Plausible (Community Edition)
+Date: 2025-11-07
+Owner repo: colindiffer/analytics (branch: master)
+
+Summary
+- Dashboard UI loads at https://analytics.propellernet.co.uk and /propellernet.co.uk routes return 200 OK.
+- API endpoints (e.g. /api/stats/<site>/main-graph) were returning 500 due to ClickHouse schema mismatch; we added missing ALIAS columns on sessions_v2 to align with Plausible queries.
+- Tracking not yet added to propellernet.co.uk; no live traffic in reports yet.
+
+Infrastructure
+- Deployment: Google Compute Engine VM (Docker Compose) with Nginx reverse proxy.
+- ClickHouse: clickhouse/clickhouse-server:24.12-alpine container on the VM, DB: plausible_events_db.
+- PostgreSQL: Cloud SQL (hostname redacted), DB name plausible.
+- DNS: analytics.propellernet.co.uk -> VM IP via Cloudflare. HTTPS terminates at Cloudflare (HTTP to Nginx upstream).
+- App env highlights: BASE_URL=https://analytics.propellernet.co.uk, BYPASS_AUTH=true (temporary), CLICKHOUSE_DATABASE_URL=http://plausible_events_db:8123/plausible_events_db.
+
+Key actions completed recently
+1) Dashboard access & auth bypass: BYPASS_AUTH for easy access during setup.
+2) Fixed duplicate sites handling; ensured native_stats_start_at populated.
+3) Created missing PostgreSQL segments table to unblock UI 200s.
+4) Created ClickHouse events_v2 and sessions_v2 tables from init-clickhouse.sql.
+5) Fixed API 500s root cause: sessions_v2 was missing ALIAS columns used in Plausible queries (country, source, etc.). Added aliases:
+   - country ALIAS country_code
+   - source ALIAS referrer_source
+   - city ALIAS city_geoname_id
+   - device/screen/os/os_version/region/entry_page_hostname (aliases to existing columns)
+
+Current status
+- UI: OK (site dashboards render the shell).
+- API: Previously 500 due to missing aliases; aliases have been added. If errors persist, re-check logs for fresh errors after requesting the API.
+- Data: No live traffic yet (tracking tag not installed on propellernet.co.uk).
+- SSL: Cloudflare provides HTTPS; Nginx serves HTTP internally.
+
+Outstanding issues / next steps
+- Install Plausible tracking on propellernet.co.uk (script URL: https://analytics.propellernet.co.uk/js/script.js, data-domain: propellernet.co.uk). Verify first pageviews.
+- Generate/renew proper SSL cert on VM if we want end-to-end TLS (optional with Cloudflare proxy).
+- Confirm all stats endpoints return 200 and UI charts populate. If any 500s remain, check plausible logs for new errors and reconcile any remaining ClickHouse schema mismatches (compare with priv/ingest_repo/structure.sql).
+- Disable BYPASS_AUTH once stakeholders can log in; create proper users.
+- Consider rebuilding the Plausible image from current code to include our ClickHouse nil-checks and other fixes.
+
+Operational notes
+- Useful schema reference: priv/ingest_repo/structure.sql (contains ALIAS columns that Plausible uses in queries).
+- SQL helper files in repo: init-clickhouse.sql, create_segments.sql, add-alias-columns.sql
+- VM helper files: compose-vm.yml, nginx-plausible.conf, setup scripts.
+
+Verification checklist
+- curl -I https://analytics.propellernet.co.uk -> 200 OK (Cloudflare)
+- curl -I http://<vm-ip>/propellernet.co.uk -> 200 OK
+- curl https://analytics.propellernet.co.uk/api/stats/propellernet.co.uk/main-graph -> expect JSON (not 500) once schema resolves and data exists.
+
+Changelog (today)
+- Add sessions_v2 ALIAS columns to match Plausible queries.
+- Document infrastructure and current state in this status file.
